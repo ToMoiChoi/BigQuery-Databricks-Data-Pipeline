@@ -1,0 +1,9 @@
+google-cloud-bigquery
+pandas
+pyarrow
+db-dtypes
+databricks-sql-connector
+databricks-sdk
+python-dotenv
+requests
+google-cloud-bigquery-storage

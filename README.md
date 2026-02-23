@@ -274,5 +274,6 @@ databricks-sdk                 # Databricks SDK
 python-dotenv                  # Load .env file
 requests                       # HTTP requests (DBFS API)
 ```
-#   B i g Q u e r y - D a t a b r i c k s - D a t a - P i p e l i n e  
+#   B i g Q u e r y - D a t a b r i c k s - D a t a - P i p e l i n e 
+ 
  

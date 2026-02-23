@@ -1,8 +1,8 @@
 # BigQuery to Databricks Data Pipeline
 
-Pipeline Python tu dong trich xuat du lieu tu **Google BigQuery** va upload len **Databricks** (Delta Table).
+A Python pipeline that automatically extracts data from **Google BigQuery** and uploads it to **Databricks** Delta Tables.
 
-## Kien truc he thong
+## Architecture
 
 ```
 +----------------+         +------------------+         +------------------+
@@ -17,70 +17,70 @@ Pipeline Python tu dong trich xuat du lieu tu **Google BigQuery** va upload len 
                              - config.py
 ```
 
-## Cau truc Project
+## Project Structure
 
 ```
-config.py               # Load & validate cau hinh tu .env
-bigquery_extract.py     # Module trich xuat du lieu tu BigQuery
-databricks_upload.py    # Module upload du lieu len Databricks
-main.py                 # Pipeline CLI (chay tung table)
-run_all.py              # Pipeline batch (chay TAT CA tables)
+config.py               # Load & validate config from .env
+bigquery_extract.py     # BigQuery data extraction module
+databricks_upload.py    # Databricks upload module
+main.py                 # CLI pipeline (single table)
+run_all.py              # Batch pipeline (ALL tables)
 requirements.txt        # Python dependencies
-.env                    # Bien moi truong (credentials) - KHONG commit!
-.env.example            # Template bien moi truong
-gcp-key.json            # Google Cloud Service Account key - KHONG commit!
-README.md               # File nay
+.env                    # Environment variables (credentials) - DO NOT commit!
+.env.example            # Environment variable template
+gcp-key.json            # Google Cloud Service Account key - DO NOT commit!
+README.md               # This file
 ```
 
-## Cai dat
+## Setup
 
-### 1. Tao virtual environment
+### 1. Create virtual environment
 
 ```bash
 python -m venv .venv
 .venv\Scripts\Activate.ps1   # Windows PowerShell
-# hoac
+# or
 source .venv/bin/activate     # Linux/Mac
 ```
 
-### 2. Cai dat dependencies
+### 2. Install dependencies
 
 ```bash
 pip install -r requirements.txt
 ```
 
-### 3. Cau hinh credentials
+### 3. Configure credentials
 
-Copy `.env.example` thanh `.env` va dien thong tin:
+Copy `.env.example` to `.env` and fill in your credentials:
 
 ```bash
 cp .env.example .env
 ```
 
-| Bien | Mo ta | Vi du |
-|------|-------|-------|
+| Variable | Description | Example |
+|----------|-------------|---------|
 | `BIGQUERY_PROJECT_ID` | GCP Project ID | `tensile-cogency-408304` |
-| `BIGQUERY_CREDENTIALS_PATH` | Duong dan toi Service Account JSON key | `gcp-key.json` |
-| `BIGQUERY_DATASET` | Dataset tren BigQuery | `datalize` |
-| `DATABRICKS_HOST` | URL workspace Databricks (phai co `https://`) | `https://dbc-xxx.cloud.databricks.com` |
+| `BIGQUERY_CREDENTIALS_PATH` | Path to Service Account JSON key | `gcp-key.json` |
+| `BIGQUERY_DATASET` | BigQuery dataset name | `datalize` |
+| `DATABRICKS_HOST` | Databricks workspace URL (must include `https://`) | `https://dbc-xxx.cloud.databricks.com` |
 | `DATABRICKS_TOKEN` | Personal Access Token | `dapi0eb9d5c...` |
-| `DATABRICKS_HTTP_PATH` | HTTP Path cua SQL Warehouse | `/sql/1.0/warehouses/xxx` |
-| `DATABRICKS_CATALOG` | Catalog tren Databricks | `datalize` |
-| `DATABRICKS_SCHEMA` | Schema tren Databricks | `view` |
+| `DATABRICKS_HTTP_PATH` | SQL Warehouse HTTP Path | `/sql/1.0/warehouses/xxx` |
+| `DATABRICKS_CATALOG` | Databricks catalog | `datalize` |
+| `DATABRICKS_SCHEMA` | Databricks schema | `view` |
 
-> **Luu y**: KHONG commit `.env` va `gcp-key.json` len Git. Them vao `.gitignore`.
+> **Warning**: DO NOT commit `.env` and `gcp-key.json` to Git. Add them to `.gitignore`.
 
-## Huong dan su dung
+## Usage
 
-### Chay toan bo dataset (run_all.py)
+### Run all tables (run_all.py)
 
-Lay **TAT CA** tables tu BigQuery dataset va upload len Databricks:
+Extract **ALL** tables from the BigQuery dataset and upload to Databricks:
 
 ```bash
 python run_all.py
 ```
 
-**Output mau:**
+**Sample output:**
 
 ```
 2026-02-23 11:00:00 | INFO | PIPELINE: BigQuery -> Databricks (ALL TABLES)
@@ -93,163 +93,163 @@ python run_all.py
 2026-02-23 11:05:00 | INFO |    Success: 25/25 tables
 ```
 
-### Chay tung table (main.py)
+### Run single table (main.py)
 
 ```bash
-# Upload 1 bang len DBFS dang Parquet
+# Upload a table to DBFS as Parquet
 python main.py --table Attendance --method dbfs
 
-# Upload 1 bang vao Delta Table qua SQL INSERT
+# Upload a table to Delta Table via SQL INSERT
 python main.py --table Attendance --method sql_insert --target attendance_table
 
-# Chay custom SQL query
+# Run a custom SQL query
 python main.py --query "SELECT * FROM datalize.Attendance WHERE employee = 'Nguyen Van A'" \
                --method sql_insert --target filtered_data
 
-# Gioi han so dong
+# Limit number of rows
 python main.py --table Attendance --method sql_insert --limit 100 --target attendance_sample
 
-# Liet ke tat ca tables trong BigQuery dataset
+# List all tables in the BigQuery dataset
 python main.py --list-tables
 ```
 
-## Chi tiet cac Module
+## Module Details
 
-### `config.py` - Quan ly cau hinh
+### `config.py` - Configuration Management
 
-| Class | Mo ta |
-|-------|-------|
-| `BigQueryConfig` | Load & validate BigQuery credentials tu `.env` |
-| `DatabricksConfig` | Load & validate Databricks credentials tu `.env` |
+| Class | Description |
+|-------|-------------|
+| `BigQueryConfig` | Load & validate BigQuery credentials from `.env` |
+| `DatabricksConfig` | Load & validate Databricks credentials from `.env` |
 
-Ca 2 class deu co method `validate()` kiem tra day du config truoc khi ket noi.
+Both classes have a `validate()` method that checks all required config before connecting.
 
 ---
 
-### `bigquery_extract.py` - Trich xuat du lieu
+### `bigquery_extract.py` - Data Extraction
 
-| Method | Mo ta | Return |
-|--------|-------|--------|
-| `extract_by_query(query)` | Chay SQL query tuy chinh | `pandas.DataFrame` |
-| `extract_table(table_name, limit)` | Lay toan bo bang | `pandas.DataFrame` |
-| `list_tables(dataset)` | Liet ke bang trong dataset | `List[str]` |
-| `get_table_schema(table_name)` | Lay schema (ten cot, kieu du lieu) | `List[dict]` |
+| Method | Description | Return |
+|--------|-------------|--------|
+| `extract_by_query(query)` | Run a custom SQL query | `pandas.DataFrame` |
+| `extract_table(table_name, limit)` | Extract an entire table | `pandas.DataFrame` |
+| `list_tables(dataset)` | List tables in a dataset | `List[str]` |
+| `get_table_schema(table_name)` | Get schema (column names, types) | `List[dict]` |
 
-**Cach su dung:**
+**Example usage:**
 
 ```python
 from bigquery_extract import BigQueryExtractor
 
 extractor = BigQueryExtractor()
 
-# Lay toan bo bang
+# Extract full table
 df = extractor.extract_table("Attendance")
 
-# Chay query tuy chinh
+# Run custom query
 df = extractor.extract_by_query("SELECT * FROM datalize.Attendance LIMIT 100")
 
-# Liet ke bang
+# List tables
 tables = extractor.list_tables()  # -> ['Attendance', 'Department1', ...]
 ```
 
 ---
 
-### `databricks_upload.py` - Upload du lieu
+### `databricks_upload.py` - Data Upload
 
-| Method | Mo ta | Khi nao dung |
-|--------|-------|--------------|
-| `upload_to_dbfs(df, path, format)` | Upload file Parquet/CSV len DBFS | Luu tru file, dataset lon |
-| `upload_to_delta_table(df, table, mode)` | Tao Delta Table tu staged Parquet | Can DBFS access |
-| `write_with_sql_connector(df, table, mode)` | INSERT tung batch qua SQL | **Recommend** - khong can DBFS |
+| Method | Description | When to use |
+|--------|-------------|-------------|
+| `upload_to_dbfs(df, path, format)` | Upload Parquet/CSV file to DBFS | File storage, large datasets |
+| `upload_to_delta_table(df, table, mode)` | Create Delta Table from staged Parquet | Requires DBFS access |
+| `write_with_sql_connector(df, table, mode)` | INSERT data in batches via SQL | **Recommended** - no DBFS needed |
 
-> **Khuyen nghi**: Dung `write_with_sql_connector()` vi khong yeu cau quyen DBFS.
+> **Recommendation**: Use `write_with_sql_connector()` as it does not require DBFS permissions.
 
-**Cach su dung:**
+**Example usage:**
 
 ```python
 from databricks_upload import DatabricksUploader
 
 uploader = DatabricksUploader()
 
-# Upload qua SQL INSERT (khuyen nghi)
+# Upload via SQL INSERT (recommended)
 uploader.write_with_sql_connector(df, "my_table", mode="overwrite")
 
-# Upload file len DBFS (can quyen DBFS)
+# Upload file to DBFS (requires DBFS permissions)
 uploader.upload_to_dbfs(df, "/FileStore/data/my_table.parquet")
 ```
 
-**Tinh nang:**
+**Features:**
 
-- Tu dong sanitize ten cot (loai bo ky tu dac biet cho Delta Lake)
-- Xu ly datetime, boolean, NULL values dung cach
-- Batch INSERT (1000 rows/batch) - tranh qua tai SQL
-- Streaming upload cho file lon (> 1MB) tren DBFS
-- Ho tro mode `overwrite` va `append`
-
----
-
-### `run_all.py` - Pipeline batch
-
-Tu dong:
-
-1. Ket noi BigQuery -> liet ke tat ca tables
-2. Extract tung table -> `pandas.DataFrame`
-3. Sanitize ten cot -> loai bo ky tu dac biet
-4. Upload len Databricks qua SQL INSERT
-5. Log ket qua tong hop (success/error count)
+- Automatic column name sanitization (removes special characters for Delta Lake)
+- Proper handling of datetime, boolean, NULL, array/list values
+- Batch INSERT (1000 rows/batch) to avoid SQL overload
+- Streaming upload for large files (> 1MB) on DBFS
+- Supports `overwrite` and `append` modes
 
 ---
 
-### `main.py` - Pipeline CLI
+### `run_all.py` - Batch Pipeline
 
-Ho tro arguments:
+Automatically:
 
-| Argument | Mo ta | Default |
-|----------|-------|---------|
-| `--table, -t` | Ten bang BigQuery | - |
-| `--query, -q` | SQL query tuy chinh | - |
-| `--method, -m` | Phuong thuc upload: `dbfs`, `delta`, `sql_insert` | `dbfs` |
-| `--target` | Ten bang dich tren Databricks | = source table |
-| `--mode` | `overwrite` hoac `append` | `overwrite` |
-| `--format` | `parquet` hoac `csv` (cho DBFS) | `parquet` |
-| `--limit, -l` | Gioi han so dong | - |
-| `--list-tables` | Liet ke tat ca tables | - |
+1. Connect to BigQuery and list all tables
+2. Extract each table into a `pandas.DataFrame`
+3. Sanitize column names (remove special characters)
+4. Upload to Databricks via SQL INSERT
+5. Log summary results (success/error count)
 
-## Du lieu BigQuery Dataset `datalize`
+---
 
-Pipeline da phat hien **25 tables** trong dataset:
+### `main.py` - CLI Pipeline
 
-| # | Table Name | Mo ta |
-|---|-----------|-------|
-| 1 | `Attendance` | Du lieu cham cong |
-| 2 | `Department1` | Thong tin phong ban |
-| 3 | `Employee_infor` | Thong tin nhan vien |
-| 4 | `Employee_infor1` | Thong tin nhan vien (ban 2) |
-| 5 | `Group` | Nhom |
-| 6 | `Group_v2` | Nhom (phien ban 2) |
-| 7 | `Holiday` | Ngay nghi le |
-| 8 | `Shift_ok` | Ca lam viec |
-| 9 | `attendance_results_chancekim` | Ket qua cham cong |
-| 10 | `dahahi_devicesList` | Danh sach thiet bi |
-| 11 | `dahahi_employeesList` | Danh sach nhan vien |
+Supported arguments:
+
+| Argument | Description | Default |
+|----------|-------------|---------|
+| `--table, -t` | BigQuery table name | - |
+| `--query, -q` | Custom SQL query | - |
+| `--method, -m` | Upload method: `dbfs`, `delta`, `sql_insert` | `dbfs` |
+| `--target` | Target table name on Databricks | = source table |
+| `--mode` | `overwrite` or `append` | `overwrite` |
+| `--format` | `parquet` or `csv` (for DBFS) | `parquet` |
+| `--limit, -l` | Limit number of rows | - |
+| `--list-tables` | List all tables | - |
+
+## BigQuery Dataset `datalize`
+
+The pipeline detected **25 tables** in the dataset:
+
+| # | Table Name | Description |
+|---|-----------|-------------|
+| 1 | `Attendance` | Attendance records |
+| 2 | `Department1` | Department information |
+| 3 | `Employee_infor` | Employee information |
+| 4 | `Employee_infor1` | Employee information (v2) |
+| 5 | `Group` | Groups |
+| 6 | `Group_v2` | Groups (v2) |
+| 7 | `Holiday` | Holidays |
+| 8 | `Shift_ok` | Work shifts |
+| 9 | `attendance_results_chancekim` | Attendance results |
+| 10 | `dahahi_devicesList` | Device list |
+| 11 | `dahahi_employeesList` | Employee list |
 | 12 | `etl_control` | ETL control metadata |
-| 13 | `hubspot_companies` | Du lieu cong ty tu HubSpot |
-| 14 | `hubspot_contacts` | Du lieu lien he tu HubSpot |
-| 15 | `lark_studentsInfo` | Thong tin hoc sinh tu Lark |
-| 16 | `lark_thongtingiaovien` | Thong tin giao vien tu Lark |
-| 17 | `lark_thongtinhocvien` | Thong tin hoc vien tu Lark |
-| 18 | `lark_thongtinlophoc` | Thong tin lop hoc tu Lark |
-| 19 | `larktask` | Tasks tu Lark |
-| 20 | `larktasktest` | Tasks test tu Lark |
-| 21 | `shopify_orders` | Don hang Shopify |
-| 22 | `shopify_orders_raw` | Don hang Shopify (raw) |
-| 23 | `test` | Bang test |
-| 24 | `test2` | Bang test 2 |
-| 25 | `vw_shopify_orders_latest` | View don hang Shopify moi nhat |
+| 13 | `hubspot_companies` | HubSpot companies data |
+| 14 | `hubspot_contacts` | HubSpot contacts data |
+| 15 | `lark_studentsInfo` | Student info from Lark |
+| 16 | `lark_thongtingiaovien` | Teacher info from Lark |
+| 17 | `lark_thongtinhocvien` | Student info from Lark |
+| 18 | `lark_thongtinlophoc` | Class info from Lark |
+| 19 | `larktask` | Lark tasks |
+| 20 | `larktasktest` | Lark test tasks |
+| 21 | `shopify_orders` | Shopify orders |
+| 22 | `shopify_orders_raw` | Shopify orders (raw) |
+| 23 | `test` | Test table |
+| 24 | `test2` | Test table 2 |
+| 25 | `vw_shopify_orders_latest` | Latest Shopify orders view |
 
-## Bao mat
+## Security
 
-Them vao `.gitignore`:
+Add to `.gitignore`:
 
 ```
 .env
@@ -261,19 +261,19 @@ __pycache__/
 
 ## Troubleshooting
 
-| Loi | Nguyen nhan | Giai phap |
-|-----|-------------|-----------|
-| `403 Forbidden (DBFS)` | Token khong co quyen DBFS | Dung `sql_insert` method thay vi `dbfs`/`delta` |
-| `PARSE_SYNTAX_ERROR` | Gia tri datetime khong duoc quote | Da fix - update `databricks_upload.py` moi nhat |
-| `DELTA_INVALID_CHARACTERS` | Ten cot chua ky tu dac biet | Da fix - tu dong sanitize trong `run_all.py` |
-| `PAT token error` | Token het han | Tao moi token tren Databricks -> Settings -> Developer |
-| `BigQuery Storage warning` | Thieu module storage | `pip install google-cloud-bigquery-storage` |
+| Error | Cause | Solution |
+|-------|-------|----------|
+| `403 Forbidden (DBFS)` | Token lacks DBFS permissions | Use `sql_insert` method instead of `dbfs`/`delta` |
+| `PARSE_SYNTAX_ERROR` | Datetime values not properly quoted | Fixed - update to latest `databricks_upload.py` |
+| `DELTA_INVALID_CHARACTERS` | Column names contain special characters | Fixed - auto-sanitized in `run_all.py` |
+| `PAT token error` | Token expired | Generate new token: Databricks -> Settings -> Developer |
+| `BigQuery Storage warning` | Missing storage module | `pip install google-cloud-bigquery-storage` |
 
 ## Dependencies
 
 ```
 google-cloud-bigquery          # BigQuery client
-google-cloud-bigquery-storage  # BigQuery Storage API (tang toc)
+google-cloud-bigquery-storage  # BigQuery Storage API (faster reads)
 pandas                         # DataFrame processing
 pyarrow                        # Parquet support
 db-dtypes                      # BigQuery data types

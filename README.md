@@ -1,6 +1,10 @@
 # 📊 BigQuery → Databricks Data Pipeline
 
+
+
 Pipeline Python tự động trích xuất dữ liệu từ **Google BigQuery** và upload lên **Databricks** (Delta Table).
+
+
 
 ## 📐 Kiến trúc hệ thống
 
@@ -277,3 +281,4 @@ requests                       # HTTP requests (DBFS API)
 #   B i g Q u e r y - D a t a b r i c k s - D a t a - P i p e l i n e 
  
  
+
